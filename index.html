@@ -1,1510 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terminal Quiz — IT Knowledge Challenge</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<style>
-  :root {
-    --bg: #0a0e0d;
-    --bg-2: #131817;
-    --surface: #1a201e;
-    --surface-2: #232b28;
-    --border: #2a322f;
-    --border-bright: #3a4540;
-    --fg: #e8f0ee;
-    --muted: #6b7872;
-    --accent: #00ff88;
-    --accent-dim: #00cc6a;
-    --accent-glow: rgba(0, 255, 136, 0.4);
-    --warning: #ffb800;
-    --danger: #ff3366;
-    --info: #00d4ff;
-  }
-
-  * { box-sizing: border-box; }
-
-  html, body {
-    margin: 0;
-    padding: 0;
-    background: var(--bg);
-    color: var(--fg);
-    font-family: 'Space Grotesk', sans-serif;
-    overflow-x: hidden;
-    min-height: 100vh;
-  }
-
-  /* Matrix Canvas Background */
-  #matrix-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    opacity: 0.45;
-    pointer-events: none;
-  }
-
-  /* Scanlines overlay */
-  .scanlines {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(0, 0, 0, 0) 0px,
-      rgba(0, 0, 0, 0) 2px,
-      rgba(0, 255, 136, 0.025) 3px,
-      rgba(0, 0, 0, 0) 4px
-    );
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  /* Vignette */
-  .vignette {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background: radial-gradient(ellipse at center, transparent 0%, transparent 50%, rgba(0, 0, 0, 0.6) 100%);
-    z-index: 1;
-    pointer-events: none;
-  }
-
-  /* Screen management */
-  .screen {
-    position: relative;
-    z-index: 2;
-    min-height: 100vh;
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1.5rem;
-  }
-
-  .screen.active {
-    display: flex;
-    animation: screenFadeIn 0.6s ease-out;
-  }
-
-  @keyframes screenFadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ===== START SCREEN ===== */
-  .terminal-header {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
-    color: var(--accent);
-    background: rgba(26, 32, 30, 0.6);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.75rem 1.25rem;
-    margin-bottom: 2rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    max-width: 100%;
-    overflow: hidden;
-  }
-
-  .terminal-header .prompt { color: var(--accent); }
-  .terminal-header .path { color: var(--muted); }
-  .terminal-header .cursor {
-    display: inline-block;
-    width: 8px;
-    height: 16px;
-    background: var(--accent);
-    animation: blink 1s infinite;
-    vertical-align: middle;
-  }
-
-  @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
-  }
-
-  .hero-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: clamp(3rem, 10vw, 7rem);
-    line-height: 0.9;
-    letter-spacing: -0.04em;
-    text-align: center;
-    margin: 0;
-    position: relative;
-    color: var(--fg);
-  }
-
-  .hero-title .glitch {
-    position: relative;
-    display: inline-block;
-  }
-
-  .hero-title .glitch::before,
-  .hero-title .glitch::after {
-    content: attr(data-text);
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  .hero-title .glitch::before {
-    color: var(--accent);
-    z-index: -1;
-    animation: glitchAnim1 3s infinite;
-    clip-path: polygon(0 0, 100% 0, 100% 45%, 0 45%);
-  }
-
-  .hero-title .glitch::after {
-    color: var(--danger);
-    z-index: -1;
-    animation: glitchAnim2 3.5s infinite;
-    clip-path: polygon(0 60%, 100% 60%, 100% 100%, 0 100%);
-  }
-
-  @keyframes glitchAnim1 {
-    0%, 100% { transform: translate(0); }
-    20% { transform: translate(-3px, 2px); }
-    40% { transform: translate(-3px, -2px); }
-    60% { transform: translate(3px, 2px); }
-    80% { transform: translate(3px, -2px); }
-  }
-
-  @keyframes glitchAnim2 {
-    0%, 100% { transform: translate(0); }
-    20% { transform: translate(3px, -2px); }
-    40% { transform: translate(3px, 2px); }
-    60% { transform: translate(-3px, -2px); }
-    80% { transform: translate(-3px, 2px); }
-  }
-
-  .hero-subtitle {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: clamp(0.875rem, 2vw, 1.125rem);
-    color: var(--muted);
-    text-align: center;
-    margin-top: 1.5rem;
-    max-width: 600px;
-    line-height: 1.6;
-  }
-
-  .hero-subtitle .highlight { color: var(--accent); }
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-    margin: 3rem 0;
-    width: 100%;
-    max-width: 720px;
-  }
-
-  .stat-card {
-    background: rgba(26, 32, 30, 0.6);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 1.25rem 1rem;
-    text-align: center;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    transition: left 0.6s ease;
-  }
-
-  .stat-card:hover {
-    border-color: var(--accent-dim);
-    transform: translateY(-2px);
-  }
-
-  .stat-card:hover::before { left: 100%; }
-
-  .stat-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-top: 0.5rem;
-  }
-
-  .start-btn {
-    background: var(--accent);
-    color: var(--bg);
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 1.125rem;
-    padding: 1.1rem 3rem;
-    border: none;
-    border-radius: 8px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    cursor: pointer;
-    position: relative;
-    transition: all 0.3s ease;
-    box-shadow: 0 0 40px var(--accent-glow);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .start-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 0 60px var(--accent-glow), 0 0 100px rgba(0, 255, 136, 0.2);
-  }
-
-  .start-btn:active { transform: translateY(0); }
-
-  .start-btn::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 8px;
-    background: linear-gradient(120deg, transparent, rgba(255,255,255,0.4), transparent);
-    transform: translateX(-100%);
-    transition: transform 0.6s ease;
-  }
-
-  .start-btn:hover::after { transform: translateX(100%); }
-
-  .keyboard-hint {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-top: 1.5rem;
-    text-align: center;
-  }
-
-  .keyboard-hint kbd {
-    background: var(--surface-2);
-    border: 1px solid var(--border-bright);
-    border-radius: 4px;
-    padding: 2px 8px;
-    font-family: inherit;
-    color: var(--fg);
-    margin: 0 2px;
-  }
-
-  /* ===== QUIZ SCREEN ===== */
-  .quiz-container {
-    width: 100%;
-    max-width: 880px;
-  }
-
-  .status-bar {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .status-item {
-    background: rgba(26, 32, 30, 0.7);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 0.75rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-
-  .status-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-  }
-
-  .status-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--fg);
-    line-height: 1;
-  }
-
-  .status-value.accent { color: var(--accent); }
-  .status-value.warning { color: var(--warning); }
-  .status-value.danger { color: var(--danger); animation: pulse 0.5s infinite; }
-
-  @keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-  }
-
-  .progress-track {
-    height: 4px;
-    background: var(--surface);
-    border-radius: 2px;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-    position: relative;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--info));
-    border-radius: 2px;
-    transition: width 0.5s ease;
-    box-shadow: 0 0 12px var(--accent-glow);
-  }
-
-  .question-card {
-    background: rgba(26, 32, 30, 0.85);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2.5rem;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 255, 136, 0.05);
-    animation: cardEnter 0.5s ease-out;
-  }
-
-  @keyframes cardEnter {
-    from { opacity: 0; transform: translateY(20px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-
-  .category-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(0, 255, 136, 0.1);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.4rem 0.85rem;
-    border-radius: 6px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-bottom: 1.5rem;
-  }
-
-  .category-badge::before {
-    content: '';
-    width: 6px;
-    height: 6px;
-    background: var(--accent);
-    border-radius: 50%;
-    box-shadow: 0 0 8px var(--accent);
-  }
-
-  .question-text {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: clamp(1.25rem, 3vw, 1.75rem);
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--fg);
-    margin: 0 0 2rem 0;
-  }
-
-  .options-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-  }
-
-  @media (max-width: 640px) {
-    .options-grid { grid-template-columns: 1fr; }
-    .status-bar { grid-template-columns: repeat(2, 1fr); }
-    .question-card { padding: 1.5rem; }
-  }
-
-  .option {
-    background: rgba(35, 43, 40, 0.6);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.25rem;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    text-align: left;
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 1rem;
-    color: var(--fg);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .option:hover:not(.disabled) {
-    border-color: var(--accent-dim);
-    background: rgba(0, 255, 136, 0.05);
-    transform: translateX(4px);
-  }
-
-  .option.disabled { cursor: not-allowed; }
-
-  .option-letter {
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 700;
-    font-size: 0.875rem;
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-    background: var(--surface-2);
-    border: 1px solid var(--border-bright);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--accent);
-    flex-shrink: 0;
-    transition: all 0.25s ease;
-  }
-
-  .option:hover:not(.disabled) .option-letter {
-    background: var(--accent);
-    color: var(--bg);
-    border-color: var(--accent);
-  }
-
-  .option-text {
-    flex: 1;
-    line-height: 1.4;
-  }
-
-  .option-icon {
-    margin-left: auto;
-    font-size: 1.125rem;
-    opacity: 0;
-    transition: opacity 0.25s ease;
-  }
-
-  .option.correct {
-    border-color: var(--accent);
-    background: rgba(0, 255, 136, 0.12);
-    box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
-  }
-
-  .option.correct .option-letter {
-    background: var(--accent);
-    color: var(--bg);
-    border-color: var(--accent);
-  }
-
-  .option.correct .option-icon {
-    opacity: 1;
-    color: var(--accent);
-  }
-
-  .option.wrong {
-    border-color: var(--danger);
-    background: rgba(255, 51, 102, 0.1);
-    animation: shake 0.4s ease;
-  }
-
-  .option.wrong .option-letter {
-    background: var(--danger);
-    color: var(--bg);
-    border-color: var(--danger);
-  }
-
-  .option.wrong .option-icon {
-    opacity: 1;
-    color: var(--danger);
-  }
-
-  @keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    25% { transform: translateX(-6px); }
-    75% { transform: translateX(6px); }
-  }
-
-  .feedback-banner {
-    margin-top: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: 8px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s ease;
-    pointer-events: none;
-  }
-
-  .feedback-banner.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .feedback-banner.correct {
-    background: rgba(0, 255, 136, 0.1);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    color: var(--accent);
-  }
-
-  .feedback-banner.wrong {
-    background: rgba(255, 51, 102, 0.1);
-    border: 1px solid rgba(255, 51, 102, 0.3);
-    color: var(--danger);
-  }
-
-  .feedback-banner.timeout {
-    background: rgba(255, 184, 0, 0.1);
-    border: 1px solid rgba(255, 184, 0, 0.3);
-    color: var(--warning);
-  }
-
-  .streak-flame {
-    display: inline-block;
-    margin-left: 0.5rem;
-    animation: flameFlicker 0.6s infinite alternate;
-  }
-
-  @keyframes flameFlicker {
-    from { transform: scale(1) rotate(-3deg); }
-    to { transform: scale(1.15) rotate(3deg); }
-  }
-
-  /* ===== RESULTS SCREEN ===== */
-  .results-container {
-    width: 100%;
-    max-width: 880px;
-    text-align: center;
-  }
-
-  .results-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: clamp(2rem, 6vw, 3.5rem);
-    letter-spacing: -0.03em;
-    margin: 0 0 0.5rem 0;
-    color: var(--fg);
-  }
-
-  .results-subtitle {
-    font-family: 'JetBrains Mono', monospace;
-    color: var(--muted);
-    font-size: 0.95rem;
-    margin-bottom: 2.5rem;
-  }
-
-  .score-display {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 3rem;
-    flex-wrap: wrap;
-    margin-bottom: 2.5rem;
-  }
-
-  .circular-progress {
-    position: relative;
-    width: 200px;
-    height: 200px;
-  }
-
-  .circular-progress svg {
-    transform: rotate(-90deg);
-    width: 100%;
-    height: 100%;
-  }
-
-  .circular-progress circle {
-    fill: none;
-    stroke-width: 8;
-    stroke-linecap: round;
-  }
-
-  .circular-progress .track { stroke: var(--surface); }
-
-  .circular-progress .fill {
-    stroke: url(#gradient);
-    stroke-dasharray: 502;
-    stroke-dashoffset: 502;
-    transition: stroke-dashoffset 1.5s ease-out;
-    filter: drop-shadow(0 0 10px var(--accent-glow));
-  }
-
-  .circular-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-  }
-
-  .circular-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 3rem;
-    font-weight: 700;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .circular-label {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-top: 0.5rem;
-  }
-
-  .score-stats {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    text-align: left;
-  }
-
-  .score-stat {
-    background: rgba(26, 32, 30, 0.7);
-    backdrop-filter: blur(8px);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    min-width: 220px;
-  }
-
-  .score-stat-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.125rem;
-    flex-shrink: 0;
-  }
-
-  .score-stat-icon.score { background: rgba(0, 255, 136, 0.15); color: var(--accent); }
-  .score-stat-icon.correct { background: rgba(0, 212, 255, 0.15); color: var(--info); }
-  .score-stat-icon.streak { background: rgba(255, 184, 0, 0.15); color: var(--warning); }
-
-  .score-stat-info { display: flex; flex-direction: column; }
-
-  .score-stat-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--fg);
-    line-height: 1;
-  }
-
-  .score-stat-label {
-    font-size: 0.75rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 0.25rem;
-  }
-
-  .rating-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    background: rgba(0, 255, 136, 0.1);
-    border: 1px solid rgba(0, 255, 136, 0.3);
-    color: var(--accent);
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 1rem;
-    font-weight: 700;
-    padding: 0.85rem 2rem;
-    border-radius: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 2.5rem;
-  }
-
-  .review-section {
-    text-align: left;
-    margin-top: 2rem;
-  }
-
-  .review-title {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-  }
-
-  .review-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border);
-  }
-
-  .review-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    max-height: 400px;
-    overflow-y: auto;
-    padding-right: 0.5rem;
-  }
-
-  .review-list::-webkit-scrollbar { width: 6px; }
-  .review-list::-webkit-scrollbar-track { background: var(--surface); border-radius: 3px; }
-  .review-list::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
-
-  .review-item {
-    background: rgba(26, 32, 30, 0.6);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--border);
-    border-radius: 8px;
-    padding: 1rem 1.25rem;
-    transition: all 0.2s ease;
-  }
-
-  .review-item.correct { border-left-color: var(--accent); }
-  .review-item.wrong { border-left-color: var(--danger); }
-  .review-item.timeout { border-left-color: var(--warning); }
-
-  .review-header {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .review-number {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.75rem;
-    color: var(--muted);
-    font-weight: 600;
-  }
-
-  .review-category {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.65rem;
-    color: var(--accent);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  .review-status {
-    margin-left: auto;
-    font-size: 0.875rem;
-  }
-
-  .review-status.correct { color: var(--accent); }
-  .review-status.wrong { color: var(--danger); }
-  .review-status.timeout { color: var(--warning); }
-
-  .review-question {
-    font-size: 0.95rem;
-    color: var(--fg);
-    margin-bottom: 0.5rem;
-    line-height: 1.4;
-  }
-
-  .review-answer {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.8rem;
-    color: var(--muted);
-  }
-
-  .review-answer .correct-text { color: var(--accent); }
-  .review-answer .wrong-text { color: var(--danger); text-decoration: line-through; }
-
-  .results-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    margin-top: 2.5rem;
-    flex-wrap: wrap;
-  }
-
-  .btn-secondary {
-    background: transparent;
-    color: var(--fg);
-    font-family: 'JetBrains Mono', monospace;
-    font-weight: 600;
-    font-size: 0.95rem;
-    padding: 1rem 2rem;
-    border: 1px solid var(--border-bright);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.25s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .btn-secondary:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: rgba(0, 255, 136, 0.05);
-  }
-
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 2rem;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: var(--surface-2);
-    border: 1px solid var(--border-bright);
-    border-radius: 8px;
-    padding: 0.85rem 1.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 0.875rem;
-    color: var(--fg);
-    z-index: 100;
-    transition: transform 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  }
-
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* Particles for correct answer */
-  .particles {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-    border-radius: 16px;
-  }
-
-  .particle {
-    position: absolute;
-    width: 4px;
-    height: 4px;
-    background: var(--accent);
-    border-radius: 50%;
-    pointer-events: none;
-  }
-
-  @media (max-width: 720px) {
-    .score-display { flex-direction: column; gap: 2rem; }
-    .circular-progress { width: 160px; height: 160px; }
-    .circular-value { font-size: 2.5rem; }
-  }
-</style>
+  <!-- Basic setup for the page -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple IT Quiz</title>
+  
+  <!-- Google Font for clean text -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================
+       1. GLOBAL STYLES (Background, Fonts, Colors)
+       ========================================= */
+    * {
+      box-sizing: border-box; /* Ensures padding doesn't affect width */
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background-color: #f0f4f8; /* Soft light gray-blue */
+      color: #1e293b; /* Dark slate text */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh; /* Full height of screen */
+      padding: 20px;
+    }
+
+    /* =========================================
+       2. MAIN CONTAINER (The White Card)
+       ========================================= */
+    .quiz-container {
+      background-color: white;
+      width: 100%;
+      max-width: 600px;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1); /* Soft shadow under card */
+      padding: 40px;
+      text-align: center;
+    }
+
+    /* =========================================
+       3. START SCREEN ELEMENTS
+       ========================================= */
+    h1 { color: #3b82f6; margin-bottom: 10px; }
+    .subtitle { color: #64748b; margin-bottom: 30px; }
+    
+    .btn {
+      background-color: #3b82f6; /* Blue button */
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      font-size: 18px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background-color: #2563eb; } /* Darker blue on hover */
+
+    /* =========================================
+       4. QUIZ SCREEN ELEMENTS (Hidden by default)
+       ========================================= */
+    #quiz-screen { display: none; }
+    
+    .header-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .score-text { color: #3b82f6; }
+
+    /* The Question text */
+    #question-text {
+      font-size: 24px;
+      margin-bottom: 30px;
+      min-height: 70px;
+    }
+
+    /* The container holding the 4 answer buttons */
+    .options-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 15px; /* Space between buttons */
+    }
+
+    /* Individual Answer Button style */
+    .option {
+      background-color: #f8fafc;
+      border: 2px solid #e2e8f0;
+      padding: 15px;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.2s;
+      font-family: inherit;
+      color: #1e293b;
+    }
+    .option:hover { border-color: #3b82f6; background-color: #eff6ff; }
+
+    /* Classes to show if answer is right or wrong */
+    .option.correct { background-color: #d1fae5; border-color: #10b981; color: #065f46; }
+    .option.wrong { background-color: #fee2e2; border-color: #ef4444; color: #991b1b; }
+    
+    /* =========================================
+       5. RESULTS SCREEN ELEMENTS (Hidden by default)
+       ========================================= */
+    #results-screen { display: none; }
+    
+    .result-score {
+      font-size: 60px;
+      font-weight: 700;
+      color: #10b981;
+      margin: 20px 0;
+    }
+  </style>
 </head>
 <body>
 
-<canvas id="matrix-canvas"></canvas>
-<div class="scanlines"></div>
-<div class="vignette"></div>
-
-<!-- ===== START SCREEN ===== -->
-<section id="start-screen" class="screen active">
-  <div class="terminal-header">
-    <span class="prompt">root@terminal</span>
-    <span class="path">:~/quiz$</span>
-    <span id="typed-command"></span><span class="cursor"></span>
-  </div>
-
-  <h1 class="hero-title">
-    <span class="glitch" data-text="TERMINAL">TERMINAL</span><br>
-    <span class="glitch" data-text="QUIZ">QUIZ</span>
-  </h1>
-
-  <p class="hero-subtitle">
-    Test your knowledge across <span class="highlight">programming</span>,
-    <span class="highlight">networking</span>, <span class="highlight">data structures</span>,
-    and more. <span class="highlight">10 random questions</span> pulled from a 40+ question bank.
-  </p>
-
-  <div class="stats-grid">
-    <div class="stat-card">
-      <div class="stat-value">10</div>
-      <div class="stat-label">Questions</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">30s</div>
-      <div class="stat-label">Per Question</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">40+</div>
-      <div class="stat-label">Question Bank</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-value">10</div>
-      <div class="stat-label">Categories</div>
-    </div>
-  </div>
-
-  <button class="start-btn" id="start-btn">
-    <i class="fas fa-play"></i>
-    Initialize Quiz
-  </button>
-
-  <div class="keyboard-hint">
-    Press <kbd>SPACE</kbd> or <kbd>ENTER</kbd> to start · Use <kbd>1</kbd>-<kbd>4</kbd> to answer
-  </div>
-</section>
-
-<!-- ===== QUIZ SCREEN ===== -->
-<section id="quiz-screen" class="screen">
+  <!-- The main wrapper holding all screens -->
   <div class="quiz-container">
-    <div class="status-bar">
-      <div class="status-item">
-        <div class="status-label">Question</div>
-        <div class="status-value"><span id="current-q">1</span>/<span id="total-q">10</span></div>
-      </div>
-      <div class="status-item">
-        <div class="status-label">Score</div>
-        <div class="status-value accent" id="current-score">0</div>
-      </div>
-      <div class="status-item">
-        <div class="status-label">Streak</div>
-        <div class="status-value warning" id="current-streak">0</div>
-      </div>
-      <div class="status-item">
-        <div class="status-label">Timer</div>
-        <div class="status-value accent" id="timer-display">30s</div>
-      </div>
+
+    <!-- =========================================
+         SCREEN 1: START SCREEN
+         ========================================= -->
+    <div id="start-screen">
+      <h1>IT Quiz Challenge</h1>
+      <p class="subtitle">Test your basic IT knowledge. 5 random questions!</p>
+      <button class="btn" id="start-btn">Start Quiz</button>
     </div>
 
-    <div class="progress-track">
-      <div class="progress-fill" id="progress-fill" style="width: 10%"></div>
+    <!-- =========================================
+         SCREEN 2: QUIZ SCREEN
+         ========================================= -->
+    <div id="quiz-screen">
+      <!-- Top bar showing question number and score -->
+      <div class="header-info">
+        <span id="question-number">Question 1/5</span>
+        <span class="score-text">Score: <span id="score">0</span></span>
+      </div>
+
+      <!-- The question goes here -->
+      <h2 id="question-text">Loading Question...</h2>
+
+      <!-- The 4 answer buttons will be injected here by JavaScript -->
+      <div class="options-grid" id="options-container"></div>
     </div>
 
-    <div class="question-card" id="question-card">
-      <div class="category-badge" id="category-badge">Loading...</div>
-      <h2 class="question-text" id="question-text">Preparing your first question...</h2>
-      <div class="options-grid" id="options-grid"></div>
-      <div class="feedback-banner" id="feedback-banner"></div>
+    <!-- =========================================
+         SCREEN 3: RESULTS SCREEN
+         ========================================= -->
+    <div id="results-screen">
+      <h1>Quiz Finished!</h1>
+      <p class="subtitle">You scored:</p>
+      <div class="result-score" id="final-score">0/5</div>
+      <button class="btn" id="restart-btn">Try Again</button>
     </div>
+
   </div>
-</section>
 
-<!-- ===== RESULTS SCREEN ===== -->
-<section id="results-screen" class="screen">
-  <div class="results-container">
-    <h1 class="results-title">
-      <span class="glitch" data-text="QUIZ COMPLETE">QUIZ COMPLETE</span>
-    </h1>
-    <p class="results-subtitle">// session_terminated successfully</p>
-
-    <div class="rating-badge" id="rating-badge">
-      <i class="fas fa-shield-halved"></i>
-      <span id="rating-text">Calculating...</span>
-    </div>
-
-    <div class="score-display">
-      <div class="circular-progress">
-        <svg viewBox="0 0 180 180">
-          <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#00ff88"/>
-              <stop offset="100%" stop-color="#00d4ff"/>
-            </linearGradient>
-          </defs>
-          <circle class="track" cx="90" cy="90" r="80"/>
-          <circle class="fill" id="progress-circle" cx="90" cy="90" r="80"/>
-        </svg>
-        <div class="circular-text">
-          <div class="circular-value" id="percentage-value">0%</div>
-          <div class="circular-label">Accuracy</div>
-        </div>
-      </div>
-
-      <div class="score-stats">
-        <div class="score-stat">
-          <div class="score-stat-icon score"><i class="fas fa-bolt"></i></div>
-          <div class="score-stat-info">
-            <div class="score-stat-value" id="final-score">0</div>
-            <div class="score-stat-label">Total Score</div>
-          </div>
-        </div>
-        <div class="score-stat">
-          <div class="score-stat-icon correct"><i class="fas fa-check"></i></div>
-          <div class="score-stat-info">
-            <div class="score-stat-value" id="final-correct">0/10</div>
-            <div class="score-stat-label">Correct Answers</div>
-          </div>
-        </div>
-        <div class="score-stat">
-          <div class="score-stat-icon streak"><i class="fas fa-fire"></i></div>
-          <div class="score-stat-info">
-            <div class="score-stat-value" id="final-streak">0</div>
-            <div class="score-stat-label">Best Streak</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="review-section">
-      <div class="review-title">
-        <i class="fas fa-list"></i> Answer Review
-      </div>
-      <div class="review-list" id="review-list"></div>
-    </div>
-
-    <div class="results-actions">
-      <button class="start-btn" id="restart-btn">
-        <i class="fas fa-rotate-right"></i>
-        Run Again
-      </button>
-      <button class="btn-secondary" id="home-btn">
-        <i class="fas fa-house"></i>
-        Main Menu
-      </button>
-    </div>
-  </div>
-</section>
-
-<div class="toast" id="toast"></div>
-
-<script>
-  // ===== QUESTION BANK =====
-  const questionsBank = [
-    { category: "Networking", question: "What does HTTP stand for?", options: ["HyperText Transfer Protocol", "High Tech Transfer Protocol", "HyperText Transmission Process", "HyperTransfer Text Protocol"], answer: 0 },
-    { category: "Algorithms", question: "What is the time complexity of binary search?", options: ["O(n)", "O(log n)", "O(n²)", "O(1)"], answer: 1 },
-    { category: "Data Structures", question: "Which data structure follows the FIFO principle?", options: ["Stack", "Queue", "Tree", "Graph"], answer: 1 },
-    { category: "Hardware", question: "What does RAM stand for?", options: ["Read Access Memory", "Random Access Memory", "Rapid Access Memory", "Read-Only Access Memory"], answer: 1 },
-    { category: "Networking", question: "Which port number is used by HTTPS by default?", options: ["80", "21", "443", "8080"], answer: 2 },
-    { category: "Programming", question: "In Java, which class is the superclass of all classes?", options: ["Main", "Super", "Object", "Class"], answer: 2 },
-    { category: "Hardware", question: "What does CPU stand for?", options: ["Central Processing Unit", "Computer Personal Unit", "Central Process Utility", "Core Processing Unit"], answer: 0 },
-    { category: "Networking", question: "Which protocol is connectionless?", options: ["TCP", "UDP", "HTTP", "FTP"], answer: 1 },
-    { category: "Programming", question: "What is the binary representation of decimal 10?", options: ["1010", "1100", "1001", "1110"], answer: 0 },
-    { category: "Web", question: "Which company originally developed JavaScript?", options: ["Microsoft", "Sun Microsystems", "Netscape", "Google"], answer: 2 },
-    { category: "Networking", question: "What does DNS stand for?", options: ["Dynamic Name System", "Domain Name System", "Distributed Network Service", "Domain Network Server"], answer: 1 },
-    { category: "OS", question: "Which Linux command lists directory contents?", options: ["dir", "list", "ls", "show"], answer: 2 },
-    { category: "Algorithms", question: "What is the time complexity of accessing an array element by index?", options: ["O(n)", "O(log n)", "O(n²)", "O(1)"], answer: 3 },
-    { category: "Programming", question: "What does IDE stand for in software development?", options: ["Integrated Development Environment", "Interactive Development Editor", "Integrated Design Environment", "Internal Development Engine"], answer: 0 },
-    { category: "Databases", question: "Which of the following is NOT a NoSQL database?", options: ["MongoDB", "Redis", "MySQL", "Cassandra"], answer: 2 },
-    { category: "Programming", question: "What does API stand for?", options: ["Application Programming Interface", "Application Protocol Interface", "Automated Programming Interface", "Application Process Integration"], answer: 0 },
-    { category: "Tools", question: "In Git, which command creates a new branch and switches to it?", options: ["git branch new", "git switch branch", "git checkout -b", "git create branch"], answer: 2 },
-    { category: "Web", question: "Which HTML tag represents the largest heading?", options: ["<head>", "<h6>", "<h1>", "<header>"], answer: 2 },
-    { category: "Web", question: "What does CSS stand for?", options: ["Computer Style Sheets", "Cascading Style Sheets", "Creative Style System", "Colorful Style Sheets"], answer: 1 },
-    { category: "Programming", question: "Which language is primarily used for native iOS development?", options: ["Kotlin", "Java", "Swift", "C#"], answer: 2 },
-    { category: "Data Structures", question: "Which data structure follows the LIFO principle?", options: ["Queue", "Stack", "Array", "Linked List"], answer: 1 },
-    { category: "Networking", question: "What does LAN stand for?", options: ["Large Area Network", "Local Area Network", "Long Access Node", "Logical Area Network"], answer: 1 },
-    { category: "Programming", question: "In C, which symbol is used to declare a pointer?", options: ["&", "#", "*", "@"], answer: 2 },
-    { category: "Algorithms", question: "What is Big O notation primarily used for?", options: ["Memory usage", "Algorithm complexity analysis", "Code length", "Execution speed"], answer: 1 },
-    { category: "Networking", question: "Which protocol automatically assigns IP addresses to devices?", options: ["DNS", "DHCP", "FTP", "SMTP"], answer: 1 },
-    { category: "Web", question: "What does JSON stand for?", options: ["JavaScript Object Notation", "Java Standard Object Network", "JavaScript Ordered Notation", "Joint Standard Object Notation"], answer: 0 },
-    { category: "Programming", question: "Which keyword declares a constant in modern JavaScript?", options: ["var", "let", "const", "static"], answer: 2 },
-    { category: "Basics", question: "What is the smallest unit of data in computing?", options: ["Byte", "Bit", "Nibble", "Word"], answer: 1 },
-    { category: "OS", question: "What does OS stand for?", options: ["Open System", "Operating System", "Output Service", "Order System"], answer: 1 },
-    { category: "Networking", question: "Which port is used by SSH by default?", options: ["21", "22", "23", "25"], answer: 1 },
-    { category: "Programming", question: "What is recursion in programming?", options: ["A loop construct", "A function that calls itself", "A type of variable", "An error type"], answer: 1 },
-    { category: "Data Structures", question: "Which of the following is a non-linear data structure?", options: ["Array", "Stack", "Tree", "Queue"], answer: 2 },
-    { category: "Web", question: "What does URL stand for?", options: ["Universal Resource Locator", "Uniform Resource Locator", "Unified Resource Link", "Uniform Reference Locator"], answer: 1 },
-    { category: "Databases", question: "What does SQL stand for?", options: ["Structured Query Language", "Simple Query Language", "Standard Question Language", "System Query Logic"], answer: 0 },
-    { category: "Programming", question: "In Python, which symbol starts a single-line comment?", options: ["//", "/*", "#", "--"], answer: 2 },
-    { category: "Hardware", question: "What is the decimal value of binary 11111111?", options: ["128", "255", "256", "511"], answer: 1 },
-    { category: "Algorithms", question: "Which sorting algorithm has the best average-case time complexity?", options: ["Bubble Sort", "Insertion Sort", "Quick Sort", "Selection Sort"], answer: 2 },
-    { category: "Security", question: "What does HTTPS use to encrypt data?", options: ["TLS/SSL", "FTP", "HTTP", "TCP"], answer: 0 },
-    { category: "Programming", question: "Which is NOT a primitive data type in Java?", options: ["int", "boolean", "String", "char"], answer: 2 },
-    { category: "Web", question: "Which CSS property controls text size?", options: ["text-size", "font-size", "text-style", "font-style"], answer: 1 },
-    { category: "OS", question: "What does the 'cd' command do in Linux?", options: ["Copy directory", "Change directory", "Create directory", "Count files"], answer: 1 }
-  ];
-
-  // ===== MATRIX RAIN BACKGROUND =====
-  const canvas = document.getElementById('matrix-canvas');
-  const ctx = canvas.getContext('2d');
-  let columns, drops;
-  const fontSize = 16;
-  const chars = '01ABCDEF{}[]()<>/*+-=&|!?#$%@';
-
-  function setupMatrix() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-    columns = Math.floor(canvas.width / fontSize);
-    drops = new Array(columns).fill(0).map(() => Math.random() * -100);
-  }
-  setupMatrix();
-  window.addEventListener('resize', setupMatrix);
-
-  let lastDraw = 0;
-  function drawMatrix(time) {
-    if (time - lastDraw > 70) {
-      ctx.fillStyle = 'rgba(10, 14, 13, 0.08)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.font = `${fontSize}px 'JetBrains Mono', monospace`;
-      for (let i = 0; i < drops.length; i++) {
-        const char = chars[Math.floor(Math.random() * chars.length)];
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
-        const isHead = Math.random() > 0.96;
-        ctx.fillStyle = isHead ? '#e8f0ee' : '#00ff88';
-        ctx.globalAlpha = isHead ? 0.9 : 0.5;
-        ctx.fillText(char, x, y);
-        if (y > canvas.height && Math.random() > 0.975) drops[i] = 0;
-        drops[i]++;
+  <script>
+    // =========================================
+    // 1. THE QUESTION BANK (Database of questions)
+    // =========================================
+    // This is an array of objects. Each object has a question, 4 options, and the index of the correct answer (0 to 3).
+    const questionsBank = [
+      {
+        question: "What does CPU stand for?",
+        options: ["Central Processing Unit", "Computer Personal Unit", "Central Process Utility", "Control Processing Unit"],
+        correctAnswer: 0 // Means "Central Processing Unit"
+      },
+      {
+        question: "Which company developed the JavaScript language?",
+        options: ["Microsoft", "Netscape", "Google", "Apple"],
+        correctAnswer: 1 // Means "Netscape"
+      },
+      {
+        question: "What does RAM stand for?",
+        options: ["Read Access Memory", "Random Access Memory", "Rapid Access Memory", "Run Active Memory"],
+        correctAnswer: 1
+      },
+      {
+        question: "Which one is a programming language?",
+        options: ["HTML", "CSS", "Python", "HTTP"],
+        correctAnswer: 2
+      },
+      {
+        question: "What is the binary representation of the number 5?",
+        options: ["101", "110", "100", "011"],
+        correctAnswer: 0
+      },
+      {
+        question: "Which protocol is used to browse websites?",
+        options: ["FTP", "SMTP", "HTTP", "SSH"],
+        correctAnswer: 2
       }
-      ctx.globalAlpha = 1;
-      lastDraw = time;
-    }
-    requestAnimationFrame(drawMatrix);
-  }
-  requestAnimationFrame(drawMatrix);
+    ];
 
-  // ===== TERMINAL TYPING EFFECT =====
-  const typedCommand = document.getElementById('typed-command');
-  const commandText = './initialize_quiz --mode=interactive';
-  let typeIdx = 0;
-  function typeCommand() {
-    if (typeIdx < commandText.length) {
-      typedCommand.textContent += commandText[typeIdx];
-      typeIdx++;
-      setTimeout(typeCommand, 60);
-    }
-  }
-  setTimeout(typeCommand, 500);
+    // =========================================
+    // 2. STATE VARIABLES (Keeping track of the game)
+    // =========================================
+    let currentQuestions = []; // Will hold the 5 randomly selected questions
+    let currentQuestionIndex = 0; // Tracks which question we are on (0, 1, 2, 3, 4)
+    let score = 0; // Tracks user's score
 
-  // ===== QUIZ STATE =====
-  const QUIZ_LENGTH = 10;
-  const TIME_PER_QUESTION = 30;
+    // =========================================
+    // 3. GRABBING HTML ELEMENTS (DOM References)
+    // =========================================
+    // We link JS variables to HTML elements so we can change them later
+    const startScreen = document.getElementById('start-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    
+    const startBtn = document.getElementById('start-btn');
+    const restartBtn = document.getElementById('restart-btn');
+    
+    const questionText = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const questionNumberEl = document.getElementById('question-number');
+    const scoreEl = document.getElementById('score');
+    const finalScoreEl = document.getElementById('final-score');
 
-  const state = {
-    questions: [],
-    currentIndex: 0,
-    score: 0,
-    streak: 0,
-    maxStreak: 0,
-    correctCount: 0,
-    answers: [],
-    timer: null,
-    timeLeft: TIME_PER_QUESTION,
-    isAnswering: false
-  };
-
-  // ===== SCREEN MANAGEMENT =====
-  function showScreen(id) {
-    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById(id).classList.add('active');
-  }
-
-  // ===== TOAST =====
-  const toastEl = document.getElementById('toast');
-  let toastTimeout;
-  function showToast(message) {
-    toastEl.textContent = message;
-    toastEl.classList.add('show');
-    clearTimeout(toastTimeout);
-    toastTimeout = setTimeout(() => toastEl.classList.remove('show'), 2200);
-  }
-
-  // ===== START QUIZ =====
-  function startQuiz() {
-    state.questions = [...questionsBank]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, QUIZ_LENGTH);
-    state.currentIndex = 0;
-    state.score = 0;
-    state.streak = 0;
-    state.maxStreak = 0;
-    state.correctCount = 0;
-    state.answers = [];
-    document.getElementById('total-q').textContent = QUIZ_LENGTH;
-    showScreen('quiz-screen');
-    renderQuestion();
-  }
-
-  // ===== RENDER QUESTION =====
-  function renderQuestion() {
-    const q = state.questions[state.currentIndex];
-    state.isAnswering = false;
-    state.timeLeft = TIME_PER_QUESTION;
-
-    document.getElementById('current-q').textContent = state.currentIndex + 1;
-    document.getElementById('current-score').textContent = state.score;
-    updateStreakDisplay();
-    document.getElementById('progress-fill').style.width = `${((state.currentIndex) / QUIZ_LENGTH) * 100}%`;
-
-    const card = document.getElementById('question-card');
-    card.style.animation = 'none';
-    card.offsetHeight;
-    card.style.animation = 'cardEnter 0.5s ease-out';
-
-    document.getElementById('category-badge').innerHTML = `<i class="fas fa-tag"></i> ${q.category}`;
-    document.getElementById('question-text').textContent = q.question;
-
-    const optionsGrid = document.getElementById('options-grid');
-    optionsGrid.innerHTML = '';
-    const letters = ['A', 'B', 'C', 'D'];
-    q.options.forEach((opt, idx) => {
-      const btn = document.createElement('button');
-      btn.className = 'option';
-      btn.innerHTML = `
-        <span class="option-letter">${letters[idx]}</span>
-        <span class="option-text">${opt}</span>
-        <span class="option-icon"><i class="fas"></i></span>
-      `;
-      btn.addEventListener('click', () => handleAnswer(idx));
-      optionsGrid.appendChild(btn);
-    });
-
-    document.getElementById('feedback-banner').classList.remove('show', 'correct', 'wrong', 'timeout');
-    startTimer();
-  }
-
-  // ===== TIMER =====
-  function startTimer() {
-    clearInterval(state.timer);
-    updateTimerDisplay();
-    state.timer = setInterval(() => {
-      state.timeLeft--;
-      updateTimerDisplay();
-      if (state.timeLeft <= 0) {
-        clearInterval(state.timer);
-        handleAnswer(-1);
+    // =========================================
+    // 4. HELPER FUNCTIONS (Tools we use)
+    // =========================================
+    
+    // Function to shuffle an array (used to pick random questions)
+    function shuffleArray(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]]; // Swap elements
       }
-    }, 1000);
-  }
-
-  function updateTimerDisplay() {
-    const el = document.getElementById('timer-display');
-    el.textContent = `${state.timeLeft}s`;
-    el.classList.remove('warning', 'danger');
-    if (state.timeLeft <= 5) el.classList.add('danger');
-    else if (state.timeLeft <= 10) el.classList.add('warning');
-  }
-
-  function updateStreakDisplay() {
-    const el = document.getElementById('current-streak');
-    let flame = state.streak >= 3 ? '<span class="streak-flame"><i class="fas fa-fire"></i></span>' : '';
-    el.innerHTML = state.streak + flame;
-  }
-
-  // ===== HANDLE ANSWER =====
-  function handleAnswer(selectedIndex) {
-    if (state.isAnswering) return;
-    state.isAnswering = true;
-    clearInterval(state.timer);
-
-    const q = state.questions[state.currentIndex];
-    const isCorrect = selectedIndex === q.answer;
-    const isTimeout = selectedIndex === -1;
-    let pointsEarned = 0;
-
-    const options = document.querySelectorAll('.option');
-    options.forEach((opt, idx) => {
-      opt.classList.add('disabled');
-      if (idx === q.answer) {
-        opt.classList.add('correct');
-        opt.querySelector('.option-icon i').className = 'fas fa-check';
-      } else if (idx === selectedIndex && !isCorrect) {
-        opt.classList.add('wrong');
-        opt.querySelector('.option-icon i').className = 'fas fa-xmark';
-      }
-    });
-
-    if (isCorrect) {
-      state.correctCount++;
-      state.streak++;
-      state.maxStreak = Math.max(state.maxStreak, state.streak);
-      const baseScore = 100;
-      const speedBonus = Math.floor((state.timeLeft / TIME_PER_QUESTION) * 50);
-      const streakMult = 1 + Math.min(state.streak - 1, 4) * 0.25;
-      pointsEarned = Math.floor((baseScore + speedBonus) * streakMult);
-      state.score += pointsEarned;
-      spawnParticles();
-    } else {
-      state.streak = 0;
+      return array;
     }
 
-    state.answers.push({
-      questionIndex: state.currentIndex,
-      question: q.question,
-      category: q.category,
-      selected: selectedIndex,
-      correct: q.answer,
-      options: q.options,
-      isCorrect,
-      isTimeout,
-      pointsEarned,
-      timeLeft: state.timeLeft
-    });
-
-    const feedback = document.getElementById('feedback-banner');
-    feedback.classList.add('show');
-    if (isCorrect) {
-      feedback.classList.add('correct');
-      feedback.innerHTML = `<i class="fas fa-circle-check"></i> Correct! +${pointsEarned} points${state.streak >= 3 ? ` · ${state.streak}x streak` : ''}`;
-    } else if (isTimeout) {
-      feedback.classList.add('timeout');
-      feedback.innerHTML = `<i class="fas fa-clock"></i> Time's up! The correct answer was: ${q.options[q.answer]}`;
-    } else {
-      feedback.classList.add('wrong');
-      feedback.innerHTML = `<i class="fas fa-circle-xmark"></i> Incorrect. The correct answer was: ${q.options[q.answer]}`;
+    // Function to switch between screens
+    function showScreen(screenToShow) {
+      // Hide all screens
+      startScreen.style.display = 'none';
+      quizScreen.style.display = 'none';
+      resultsScreen.style.display = 'none';
+      // Show the requested screen
+      screenToShow.style.display = 'block';
     }
 
-    document.getElementById('current-score').textContent = state.score;
-    updateStreakDisplay();
+    // =========================================
+    // 5. CORE QUIZ LOGIC
+    // =========================================
+    
+    // A) Start the Quiz
+    function startQuiz() {
+      // Reset game state
+      currentQuestionIndex = 0;
+      score = 0;
+      
+      // Pick 5 random questions from the bank
+      // 1. Copy the bank using spread operator [...]
+      // 2. Shuffle the copy
+      // 3. Slice to get only the first 5
+      currentQuestions = shuffleArray([...questionsBank]).slice(0, 5);
+      
+      showScreen(quizScreen);
+      loadQuestion(); // Load the first question
+    }
 
-    setTimeout(() => {
-      state.currentIndex++;
-      if (state.currentIndex >= QUIZ_LENGTH) {
-        showResults();
+    // B) Load a question into the HTML
+    function loadQuestion() {
+      // Reset score display
+      scoreEl.textContent = score;
+      
+      // Update "Question 1/5" text
+      questionNumberEl.textContent = `Question ${currentQuestionIndex + 1}/${currentQuestions.length}`;
+      
+      // Get the current question object
+      const currentQ = currentQuestions[currentQuestionIndex];
+      
+      // Put the question text on the screen
+      questionText.textContent = currentQ.question;
+      
+      // Clear old answer buttons
+      optionsContainer.innerHTML = '';
+
+      // Create 4 buttons for the 4 options
+      currentQ.options.forEach((option, index) => {
+        // Create a new button element
+        const button = document.createElement('button');
+        // Add the CSS class for styling
+        button.classList.add('option');
+        // Put the option text inside the button
+        button.textContent = option;
+        
+        // Attach a click event to this button
+        // We use 'index' to know which option was clicked
+        button.addEventListener('click', () => selectAnswer(index));
+        
+        // Add the button to the container on the webpage
+        optionsContainer.appendChild(button);
+      });
+    }
+
+    // C) Handle when user clicks an answer
+    function selectAnswer(selectedIndex) {
+      const currentQ = currentQuestions[currentQuestionIndex];
+      
+      // Get all the option buttons currently on screen
+      const allButtons = document.querySelectorAll('.option');
+      
+      // Disable clicking again after answering
+      allButtons.forEach(btn => btn.style.pointerEvents = 'none');
+      
+      // Check if the selected index matches the correct answer index
+      if (selectedIndex === currentQ.correctAnswer) {
+        // Correct! Turn green and add point
+        allButtons[selectedIndex].classList.add('correct');
+        score++;
+        scoreEl.textContent = score;
       } else {
-        renderQuestion();
+        // Wrong! Turn red, and show the correct one in green
+        allButtons[selectedIndex].classList.add('wrong');
+        allButtons[currentQ.correctAnswer].classList.add('correct');
       }
-    }, 2200);
-  }
-
-  // ===== PARTICLES =====
-  function spawnParticles() {
-    const card = document.getElementById('question-card');
-    const particles = document.createElement('div');
-    particles.className = 'particles';
-    card.appendChild(particles);
-
-    for (let i = 0; i < 20; i++) {
-      const p = document.createElement('div');
-      p.className = 'particle';
-      const angle = (Math.PI * 2 * i) / 20;
-      const distance = 80 + Math.random() * 80;
-      const tx = Math.cos(angle) * distance;
-      const ty = Math.sin(angle) * distance;
-      p.style.left = '50%';
-      p.style.top = '50%';
-      p.style.background = ['#00ff88', '#00d4ff', '#ffb800'][Math.floor(Math.random() * 3)];
-      p.animate([
-        { transform: 'translate(-50%, -50%) scale(1)', opacity: 1 },
-        { transform: `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0)`, opacity: 0 }
-      ], { duration: 800 + Math.random() * 400, easing: 'cubic-bezier(0.2, 0.6, 0.4, 1)' });
-      particles.appendChild(p);
+      
+      // Wait 1.5 seconds, then move to the next question
+      setTimeout(() => {
+        currentQuestionIndex++;
+        
+        // If we finished all questions, show results
+        if (currentQuestionIndex >= currentQuestions.length) {
+          showResults();
+        } else {
+          // Otherwise, load the next question
+          loadQuestion();
+        }
+      }, 1500); // 1500 milliseconds = 1.5 seconds
     }
-    setTimeout(() => particles.remove(), 1300);
-  }
 
-  // ===== RESULTS =====
-  function showResults() {
-    showScreen('results-screen');
-    const percentage = Math.round((state.correctCount / QUIZ_LENGTH) * 100);
-
-    // Animate circular progress
-    const circle = document.getElementById('progress-circle');
-    const circumference = 502;
-    setTimeout(() => {
-      circle.style.strokeDashoffset = circumference - (circumference * percentage) / 100;
-    }, 200);
-
-    // Animate percentage number
-    animateNumber('percentage-value', 0, percentage, 1500, v => `${v}%`);
-    animateNumber('final-score', 0, state.score, 1500);
-    document.getElementById('final-correct').textContent = `${state.correctCount}/${QUIZ_LENGTH}`;
-    document.getElementById('final-streak').textContent = state.maxStreak;
-
-    // Rating
-    const ratingText = document.getElementById('rating-text');
-    const ratingBadge = document.getElementById('rating-badge');
-    let rating, icon;
-    if (percentage >= 90) { rating = 'SYSTEM ADMIN'; icon = 'fa-shield-halved'; }
-    else if (percentage >= 70) { rating = 'SENIOR DEV'; icon = 'fa-code'; }
-    else if (percentage >= 50) { rating = 'JUNIOR DEV'; icon = 'fa-terminal'; }
-    else if (percentage >= 30) { rating = 'INTERN'; icon = 'fa-bug'; }
-    else { rating = 'BOOTING UP...'; icon = 'fa-power-off'; }
-    ratingText.textContent = rating;
-    ratingBadge.querySelector('i').className = `fas ${icon}`;
-
-    // Review list
-    const reviewList = document.getElementById('review-list');
-    reviewList.innerHTML = '';
-    state.answers.forEach((a, idx) => {
-      const item = document.createElement('div');
-      item.className = `review-item ${a.isCorrect ? 'correct' : (a.isTimeout ? 'timeout' : 'wrong')}`;
-      const statusIcon = a.isCorrect ? '<i class="fas fa-check"></i>' : (a.isTimeout ? '<i class="fas fa-clock"></i>' : '<i class="fas fa-xmark"></i>');
-      const statusText = a.isCorrect ? 'Correct' : (a.isTimeout ? 'Timeout' : 'Wrong');
-      let answerHtml = '';
-      if (!a.isCorrect) {
-        const wrongText = a.isTimeout ? '' : `<span class="wrong-text">${a.options[a.selected]}</span> → `;
-        answerHtml = `<div class="review-answer">${wrongText}<span class="correct-text">${a.options[a.correct]}</span></div>`;
-      } else {
-        answerHtml = `<div class="review-answer"><span class="correct-text">${a.options[a.correct]}</span> · +${a.pointsEarned} pts</div>`;
-      }
-      item.innerHTML = `
-        <div class="review-header">
-          <span class="review-number">#${String(idx + 1).padStart(2, '0')}</span>
-          <span class="review-category">${a.category}</span>
-          <span class="review-status ${a.isCorrect ? 'correct' : (a.isTimeout ? 'timeout' : 'wrong')}">${statusIcon} ${statusText}</span>
-        </div>
-        <div class="review-question">${a.question}</div>
-        ${answerHtml}
-      `;
-      reviewList.appendChild(item);
-    });
-  }
-
-  function animateNumber(id, from, to, duration, formatter = v => v) {
-    const el = document.getElementById(id);
-    const start = performance.now();
-    function step(now) {
-      const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const value = Math.round(from + (to - from) * eased);
-      el.textContent = formatter(value);
-      if (progress < 1) requestAnimationFrame(step);
+    // D) Show final results
+    function showResults() {
+      // Put final score in the text
+      finalScoreEl.textContent = `${score} / ${currentQuestions.length}`;
+      showScreen(resultsScreen);
     }
-    requestAnimationFrame(step);
-  }
 
-  // ===== EVENT LISTENERS =====
-  document.getElementById('start-btn').addEventListener('click', startQuiz);
-  document.getElementById('restart-btn').addEventListener('click', () => {
-    showToast('Spawning new questions...');
-    startQuiz();
-  });
-  document.getElementById('home-btn').addEventListener('click', () => {
-    showScreen('start-screen');
-    typedCommand.textContent = '';
-    typeIdx = 0;
-    setTimeout(typeCommand, 300);
-  });
+    // =========================================
+    // 6. EVENT LISTENERS (Waiting for user clicks)
+    // =========================================
+    
+    // When "Start Quiz" button is clicked, run startQuiz function
+    startBtn.addEventListener('click', startQuiz);
+    
+    // When "Try Again" button is clicked, also run startQuiz function
+    restartBtn.addEventListener('click', startQuiz);
 
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    const activeScreen = document.querySelector('.screen.active').id;
-    if (activeScreen === 'start-screen' && (e.key === ' ' || e.key === 'Enter')) {
-      e.preventDefault();
-      startQuiz();
-    } else if (activeScreen === 'quiz-screen' && !state.isAnswering) {
-      const num = parseInt(e.key);
-      if (num >= 1 && num <= 4) {
-        handleAnswer(num - 1);
-      }
-    } else if (activeScreen === 'results-screen' && e.key === 'Enter') {
-      startQuiz();
-    }
-  });
-
-  // Welcome toast
-  setTimeout(() => showToast('System ready. Quiz module loaded.'), 1500);
-</script>
-
+  </script>
 </body>
 </html>
